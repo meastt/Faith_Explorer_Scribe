@@ -1,0 +1,35 @@
+{
+  "agent": {
+    "name": "The Scribe",
+    "description": "Autonomous viral marketer and theological researcher for Faith Explorer",
+    "model": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "api_key_env": "ANTHROPIC_API_KEY"
+    }
+  },
+  "soul": "SOUL.md",
+  "heartbeat": "HEARTBEAT.md",
+  "memory": "MEMORY.md",
+  "skills_dir": "skills/",
+  "skills": [
+    "tiktok_master",
+    "postiz",
+    "revenuecat"
+  ],
+  "pipeline": {
+    "entrypoint": "python scripts/pipeline.py",
+    "schedule": "0 9 * * *"
+  },
+  "env": {
+    "required": [
+      "ANTHROPIC_API_KEY",
+      "GEMINI_API_KEY",
+      "POSTIZ_API_KEY",
+      "POSTIZ_WORKSPACE_ID",
+      "REVENUECAT_API_KEY",
+      "REVENUECAT_PROJECT_ID",
+      "X_BEARER_TOKEN"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Generated assets (large image files)
+assets/*/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp pipeline artifacts
+hooks.json
