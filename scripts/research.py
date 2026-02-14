@@ -1,7 +1,7 @@
-"""Step 1: Research trending theological topics and generate hook ideas."""
+"""Step 1: Research trending theological topics from X/Twitter."""
 
-import json
 import os
+import time
 from datetime import date
 
 import httpx
@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-HOOKS_FILE = os.path.join(os.path.dirname(__file__), "..", "hooks.json")
+MEMORY_FILE = os.path.join(os.path.dirname(__file__), "..", "MEMORY.md")
 X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN")
 
-# Sample seed topics — The Scribe refines these based on MEMORY.md learnings
+# Base seed topics — The Scribe refines these based on MEMORY.md learnings
 SEED_QUERIES = [
     "interfaith dialogue",
     "Bible vs Quran",
@@ -21,6 +21,39 @@ SEED_QUERIES = [
     "religious comparison",
     "scripture contradiction",
 ]
+
+
+def _read_memory() -> str:
+    """Read MEMORY.md for past performance context."""
+    if not os.path.exists(MEMORY_FILE):
+        return ""
+    with open(MEMORY_FILE) as f:
+        return f.read()
+
+
+def _adjust_queries_from_memory(queries: list[str]) -> list[str]:
+    """Dynamically add seed queries based on MEMORY.md feedback."""
+    memory = _read_memory().lower()
+    if not memory:
+        return queries
+
+    extra = []
+    if "controversial" in memory or "declined" in memory:
+        extra.extend([
+            "religious controversy today",
+            "faith debate viral",
+            "scripture hot take",
+        ])
+    if "spanish" in memory or "español" in memory:
+        extra.extend([
+            "debate religioso",
+            "fe y ciencia",
+            "biblia vs corán",
+        ])
+    if "declined" in memory:
+        extra.append("why people leave religion")
+
+    return queries + extra
 
 
 def search_x_trends(query: str) -> list[dict]:
@@ -39,42 +72,32 @@ def search_x_trends(query: str) -> list[dict]:
     return [{"text": t["text"], "source": "x"} for t in data]
 
 
-def generate_hooks(trends: list[dict]) -> list[dict]:
-    """Turn raw trends into hook ideas using the Skeptic-to-Believer formula."""
-    hooks = []
-    hook_templates = [
-        "My {person} didn't believe {claim}. I used Faith Explorer to show them the truth.",
-        "Everyone says {claim}. But when you actually search 144,000+ verses...",
-        "{person} challenged me on {claim}. The AI Dialogue Simulator settled it.",
-    ]
-    for i, trend in enumerate(trends[:6]):
-        template = hook_templates[i % len(hook_templates)]
-        hooks.append({
-            "id": i + 1,
-            "template": template,
-            "source_trend": trend["text"][:120],
-            "language": "en" if i % 2 == 0 else "es",
-        })
-    return hooks
-
-
 def run() -> list[dict]:
-    """Execute the research step. Returns hook ideas and writes hooks.json."""
+    """Execute the research step. Returns raw trends (no hooks)."""
     print(f"[Research] Starting trend research for {date.today()}")
 
+    queries = _adjust_queries_from_memory(SEED_QUERIES)
+    print(f"  [INFO] Searching {len(queries)} queries (base: {len(SEED_QUERIES)}, memory-added: {len(queries) - len(SEED_QUERIES)})")
+
     all_trends = []
-    for query in SEED_QUERIES:
-        trends = search_x_trends(query)
-        all_trends.extend(trends)
+    for query in queries:
+        try:
+            trends = search_x_trends(query)
+            all_trends.extend(trends)
+            # X free tier: 1 request per 15 seconds
+            if X_BEARER_TOKEN:
+                time.sleep(16)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                print(f"  [RATE] X rate limit hit — stopping search with {len(all_trends)} trends so far")
+                break
+            raise
 
-    hooks = generate_hooks(all_trends)
-
-    with open(HOOKS_FILE, "w") as f:
-        json.dump({"date": str(date.today()), "hooks": hooks}, f, indent=2)
-
-    print(f"[Research] Generated {len(hooks)} hooks -> hooks.json")
-    return hooks
+    print(f"[Research] Collected {len(all_trends)} raw trends")
+    return all_trends
 
 
 if __name__ == "__main__":
-    run()
+    trends = run()
+    for t in trends[:5]:
+        print(f"  - {t['text'][:80]}")

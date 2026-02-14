@@ -1,4 +1,6 @@
-"""Step 4: Pull RevenueCat metrics and log to MEMORY.md."""
+"""Step 5: Pull RevenueCat metrics and log to MEMORY.md with hook details."""
+
+from __future__ import annotations
 
 import os
 from datetime import date
@@ -57,8 +59,8 @@ def append_to_memory(entry: str):
         f.write(f"\n{entry}")
 
 
-def run() -> dict:
-    """Execute metrics check and log results."""
+def run(hooks_used: list[dict] | None = None) -> dict:
+    """Execute metrics check and log results alongside hooks used today."""
     print(f"[Metrics] Checking RevenueCat metrics for {date.today()}")
 
     metrics = fetch_metrics()
@@ -71,6 +73,14 @@ def run() -> dict:
         f"- Downloads: {metrics['downloads']}\n"
         f"- Source: {metrics['source']}\n"
     )
+
+    # Log which hooks were used today (closes the feedback loop)
+    if hooks_used:
+        entry += "- Hooks posted today:\n"
+        for hook in hooks_used:
+            lang = hook.get("language", "?")
+            text = hook.get("hook_text", "N/A")[:80]
+            entry += f"  - [{lang}] {text}\n"
 
     decline_warning = check_decline(metrics)
     if decline_warning:
